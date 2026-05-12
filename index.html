@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Messaging Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232266E2'/%3E%3Ctext x='16' y='22' font-family='Inter,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+  </script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js">
+  </script>
+  <style>
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { background: #F9FAFB; }
+    .card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); transition: box-shadow 0.2s ease; }
+    .input-field { border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 14px; font-size: 14px; width: 100%; outline: none; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; color: #1F2937; }
+    .input-field:focus { border-color: #2266E2; box-shadow: 0 0 0 3px rgba(34,102,226,0.1); }
+    .input-field.error { border-color: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+    .input-field::placeholder { color: #9CA3AF; }
+    label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+    .btn-primary { background: #2266E2; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary:hover:not(:disabled) { background: #1A56D6; }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: #374151; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    .btn-secondary:hover { background: #F3F4F6; }
+    .pill { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .toast { position: fixed; bottom: 24px; right: 24px; min-width: 320px; max-width: 420px; padding: 16px 20px; border-radius: 10px; background: #fff; border: 1px solid #E5E7EB; box-shadow: 0 8px 32px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 12px; transform: translateY(120%); opacity: 0; transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease; z-index: 1000; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.hiding { transform: translateY(20px); opacity: 0; }
+    .toast.success { border-left: 4px solid #10B981; }
+    .toast.error { border-left: 4px solid #EF4444; }
+    .toast.warning { border-left: 4px solid #F59E0B; }
+    .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-in { animation: slideIn 0.25s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .lang-btn { padding: 6px 12px; font-size: 13px; font-weight: 500; border-radius: 6px; border: 1px solid #E5E7EB; background: #fff; color: #374151; cursor: pointer; transition: all 0.2s; }
+    .lang-btn.active { background: #2266E2; color: #fff; border-color: #2266E2; }
+    .lang-btn:hover:not(.active) { background: #F3F4F6; }
+    .badge-whatsapp { background: #DCFCE7; color: #166534; font-size: 12px; padding: 2px 10px; border-radius: 999px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+    .country-select { border: 1px solid #E5E7EB; border-radius: 8px 0 0 8px; padding: 10px 8px; font-size: 14px; outline: none; background: #F9FAFB; color: #374151; cursor: pointer; border-right: none; min-width: 100px; }
+    .country-select:focus { border-color: #2266E2; }
+    .input-group { display: flex; }
+    .input-group .input-field { border-radius: 0 8px 8px 0; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot.connected { background: #10B981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+    .status-dot.disconnected { background: #EF4444; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+    .empty-state { text-align: center; padding: 24px; color: #9CA3AF; font-size: 14px; }
+    .history-item { padding: 12px 16px; border-bottom: 1px solid #F3F4F6; display: flex; align-items: center; justify-content: space-between; }
+    .history-item:last-child { border-bottom: none; }
+    .char-counter { font-size: 12px; color: #9CA3AF; text-align: right; margin-top: 4px; }
+    .char-counter.warning { color: #F59E0B; }
+    .char-counter.danger { color: #EF4444; }
+    [dir="rtl"] .toast { right: auto; left: 24px; }
+    [dir="rtl"] .input-group .country-select { border-radius: 0 8px 8px 0; border-left: none; border-right: 1px solid #E5E7EB; }
+    [dir="rtl"] .input-group .input-field { border-radius: 8px 0 0 8px; }
+    [dir="rtl"] .country-select { border-radius: 0 8px 8px 0; }
+    [dir="rtl"] .history-item { text-align: right; }
+    [dir="rtl"] .rotate-badge { left: auto !important; right: 8px !important; }
+    /* Toggle Switch */
+    .toggle-wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; transition: background 0.2s; }
+    .toggle-wrap.active { background: #EFF6FF; border-color: #BFDBFE; }
+    .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #D1D5DB; border-radius: 24px; transition: background 0.25s; }
+    .toggle-slider::before { content: ""; position: absolute; left: 3px; bottom: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .toggle-switch input:checked + .toggle-slider { background: #2266E2; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .toggle-switch.small { width: 36px !important; height: 20px !important; }
+    .toggle-switch.small .toggle-slider::before { width: 14px; height: 14px; left: 2px; bottom: 2px; }
+    .toggle-switch.small input:checked + .toggle-slider::before { transform: translateX(16px); }
+    .rotate-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #FEF3C7; color: #92400E; }
+    .rotate-badge .count { color: #D97706; }
+    .variant-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: #EEF2FF; color: #4338CA; }
+    .rephrase-flash { animation: rephraseFlash 0.5s ease; }
+    @keyframes rephraseFlash { 0% { background: #EFF6FF; } 100% { background: transparent; } }
+    .msg-variant-badge { font-size: 11px; color: #6B7280; background: #F3F4F6; padding: 2px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
+    .upload-area-drag { border-color: #2266E2 !important; background: rgba(34,102,226,0.04) !important; }
+    @media (max-width: 640px) {
+      .toast { left: 16px; right: 16px; min-width: auto; }
+    }
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 999; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal-box { background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 92%; max-width: 440px; max-height: 90vh; overflow-y: auto; transform: scale(0.95) translateY(10px); transition: transform 0.25s ease; }
+    .modal-overlay.open .modal-box { transform: scale(1) translateY(0); }
+    .qr-skeleton { width: 220px; height: 220px; margin: 0 auto; border-radius: 12px; background: linear-gradient(135deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%); background-size: 400% 400%; animation: qrPulse 1.5s ease infinite; display: flex; align-items: center; justify-content: center; }
+    @keyframes qrPulse { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .status-step { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F3F4F6; font-size: 13px; color: #9CA3AF; }
+    .status-step:last-child { border-bottom: none; }
+    .status-step.active { color: #1F2937; }
+    .status-step.done { color: #10B981; }
+    .status-step .step-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #E5E7EB; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; transition: all 0.3s; }
+    .status-step.active .step-dot { border-color: #2266E2; background: #EFF6FF; color: #2266E2; }
+    .status-step.done .step-dot { border-color: #10B981; background: #DCFCE7; color: #10B981; }
+    .mode-tab { border-color: #E5E7EB; background: #fff; color: #374151; }
+    .mode-tab:hover { border-color: #2266E2; }
+    .mode-tab.active { border-color: #2266E2; background: #EFF6FF; color: #2266E2; }
+    .mode-tab.active span { color: #2266E2 !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="border-b border-[#E5E7EB] bg-white" style="border-bottom: 1px solid #E5E7EB;">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between" style="height:120px">
+      <div class="flex items-center gap-4">
+        <img src="Aliaa Hossam - Logo.png" alt="Aliaa Hossam" style="height:90px;width:auto" />
+        <div>
+          <h1 class="text-[15px] font-semibold text-[#1F2937] leading-tight" data-i18n="appTitle">WhatsApp Dashboard</h1>
+          <p class="text-[11px] text-[#6B7280]" data-i18n="appSubtitle">Messaging Platform</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <button class="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:bg-gray-100 transition" id="settingsBtn" title="Settings">
+          <i class="fas fa-cog"></i>
+        </button>
+        <button class="btn-secondary text-[12px] flex items-center gap-1.5 px-3 py-1.5" id="connectBtn">
+          <i class="fab fa-whatsapp text-[#25D366]"></i>
+          <span data-i18n="connectDevice">Connect Device</span>
+        </button>
+        <div class="hidden sm:flex items-center gap-1.5 text-[13px] text-[#6B7280] font-medium" id="clockDisplay">
+          <i class="far fa-clock text-[11px]"></i>
+          <span id="clockTime">--:--:--</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-2 text-[13px] text-[#6B7280]">
+          <span class="status-dot connected" id="statusDot"></span>
+          <span data-i18n="connected">Connected</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button class="lang-btn active" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="ar">AR</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 fade-in">
+      <div class="card p-5 flex items-center gap-4">
+        <div class="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center text-[#2266E2] text-lg">
+          <i class="fas fa-paper-plane"></i>
+        </div>
+        <div>
+          <p class="text-[12px] font-medium text-[#6B7280] uppercase tracking-wide" data-i18n="messagesSent">Messages Sent</p>
+          <p class="text-[22px] font-bold text-[#1F2937]" id="statsSent">0</p>
+        </div>
+      </div>
+      <div class="card p-5 flex items-center gap-4">
+        <div class="w-11 h-11 rounded-lg bg-green-50 flex items-center justify-center text-[#10B981] text-lg">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div>
+          <p class="text-[12px] font-medium text-[#6B7280] uppercase tracking-wide" data-i18n="delivered">Delivered</p>
+          <p class="text-[22px] font-bold text-[#1F2937]" id="statsDelivered">0</p>
+        </div>
+      </div>
+      <div class="card p-5 flex items-center gap-4">
+        <div class="w-11 h-11 rounded-lg bg-amber-50 flex items-center justify-center text-[#F59E0B] text-lg">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div>
+          <p class="text-[12px] font-medium text-[#6B7280] uppercase tracking-wide" data-i18n="pending">Pending</p>
+          <p class="text-[22px] font-bold text-[#1F2937]" id="statsPending">0</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- Main Form Card -->
+      <div class="lg:col-span-3 card p-6 fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-[17px] font-semibold text-[#1F2937]" data-i18n="sendOfferTitle">Send WhatsApp Offer</h2>
+          <span class="badge-whatsapp"><i class="fab fa-whatsapp text-[13px]"></i> WhatsApp</span>
+        </div>
+
+        <form id="offerForm" autocomplete="off">
+          <!-- Phone Number -->
+          <div class="mb-5">
+            <label for="phoneInput" data-i18n="phoneLabel">Phone Number</label>
+            <div class="input-group">
+              <select class="country-select" id="countryCode">
+                <option value="+1">US +1</option>
+                <option value="+44">UK +44</option>
+                <option value="+966" selected>SA +966</option>
+                <option value="+20">EG +20</option>
+                <option value="+971">AE +971</option>
+                <option value="+974">QA +974</option>
+                <option value="+965">KW +965</option>
+                <option value="+973">BH +973</option>
+                <option value="+968">OM +968</option>
+                <option value="+962">JO +962</option>
+                <option value="+961">LB +961</option>
+                <option value="+213">DZ +213</option>
+                <option value="+212">MA +212</option>
+                <option value="+216">TN +216</option>
+                <option value="+218">LY +218</option>
+                <option value="+249">SD +249</option>
+                <option value="+91">IN +91</option>
+                <option value="+92">PK +92</option>
+                <option value="+880">BD +880</option>
+              </select>
+              <input type="tel" class="input-field" id="phoneInput" data-i18n-placeholder="phonePlaceholder" placeholder="10XXXXXXXX" required />
+            </div>
+            <p class="text-[12px] text-[#9CA3AF] mt-1.5 flex items-center gap-1">
+              <i class="fas fa-info-circle"></i>
+              <span data-i18n="phoneHint">Enter number without country code</span>
+            </p>
+          </div>
+
+          <!-- Patient Name -->
+          <div class="mb-5" id="nameFieldWrap">
+            <label for="nameInput" data-i18n="nameLabel">Patient Name</label>
+            <input type="text" class="input-field" id="nameInput" data-i18n-placeholder="namePlaceholder" placeholder="e.g. Ahmed Hassan" required />
+          </div>
+
+          <!-- Message Template -->
+          <div class="mb-5">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2">
+                <label for="messageInput" data-i18n="messageLabel">Offer Message</label>
+                <span class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#2266E2] bg-blue-50 border border-blue-200 px-3 py-1 rounded-full" id="aiBadge">
+                  <i class="fas fa-wand-magic-sparkles text-[12px]"></i>
+                  <span data-i18n="aiActive">AI</span>
+                  <button type="button" class="ml-1 hover:text-[#1A56D6] transition" id="shuffleBtn" title="Rephrase message">
+                    <i class="fas fa-shuffle text-[12px]"></i>
+                  </button>
+                </span>
+                <div class="flex items-center border border-[#E5E7EB] rounded-lg overflow-hidden text-[11px] font-medium" id="msgDirToggle">
+                  <button type="button" class="px-2 py-0.5 bg-[#2266E2] text-white" data-dir="ltr">En</button>
+                  <button type="button" class="px-2 py-0.5 text-[#6B7280] hover:bg-gray-100" data-dir="rtl">Ar</button>
+                </div>
+              </div>
+              <div class="flex items-center gap-1" id="variantRow">
+                <i class="fas fa-layer-group text-[10px] text-[#9CA3AF]"></i>
+              </div>
+            </div>
+            <textarea class="input-field" id="messageInput" rows="3" data-i18n-placeholder="messagePlaceholder" placeholder="Type your offer message..." maxlength="1000">Hi {{name}}, we have a special healthcare offer for you! Get 20% off on your next visit. Reply for details.</textarea>
+            <div class="flex items-center justify-between mt-1.5">
+              <label class="flex items-center gap-1.5 text-[11px] text-[#6B7280] hover:text-[#2266E2] cursor-pointer transition" id="attachImageLabel">
+                <input type="file" accept="image/*" class="hidden" id="attachImageInput" />
+                <i class="fas fa-image text-[13px]"></i>
+                <span data-i18n="attachImage">Attach Image</span>
+              </label>
+              <div class="char-counter" id="charCounter">0 / 1000</div>
+            </div>
+            <div class="hidden relative mt-2 rounded-lg overflow-hidden border border-[#E5E7EB]" id="imagePreviewWrap">
+              <img class="max-h-32 w-full object-contain bg-gray-50" id="imagePreview" />
+              <button type="button" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition text-[11px]" id="removeImageBtn">
+                <i class="fas fa-times"></i>
+              </button>
+              <p class="text-[10px] text-[#6B7280] text-center pb-1" id="imageFileName"></p>
+            </div>
+            <p class="text-[11px] text-[#9CA3AF] mt-1.5 flex items-center gap-1.5">
+              <i class="fas fa-at text-[10px]"></i>
+              <span data-i18n="variablesHint">Insert:</span>
+              <button type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-[#6B7280] hover:bg-[#2266E2] hover:text-white transition var-insert" data-var="{{name}}">{{name}}</button>
+              <button type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-[#6B7280] hover:bg-[#2266E2] hover:text-white transition var-insert" data-var="{{number}}">{{number}}</button>
+            </p>
+          </div>
+
+          <!-- Preview -->
+          <div class="mb-5 p-4 rounded-lg bg-gray-50 border border-[#E5E7EB]">
+            <p class="text-[12px] font-medium text-[#6B7280] mb-1.5 uppercase tracking-wide" data-i18n="preview">Preview</p>
+            <p class="text-[14px] text-[#374151] leading-relaxed" id="previewText">Hi Ahmed Hassan, we have a special healthcare offer for you! Get 20% off on your next visit. Reply for details.</p>
+            <img class="hidden mt-2 max-h-32 rounded border border-[#E5E7EB] object-contain bg-white" id="previewImage" />
+          </div>
+
+          <!-- Smart Features Toggles -->
+          <div class="mb-5 space-y-2.5" id="featureToggles">
+            <div class="toggle-wrap" id="nameWrap">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-[#7C3AED] flex-shrink-0">
+                  <i class="fas fa-user text-[13px]"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[13px] font-medium text-[#1F2937]" data-i18n="useName">Use Patient Name</p>
+                  <p class="text-[11px] text-[#6B7280] truncate" data-i18n="useNameHint">Replace {{name}} in message</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="nameToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap" id="typingWrap">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-[#EA580C] flex-shrink-0">
+                  <i class="fas fa-keyboard text-[13px]"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[13px] font-medium text-[#1F2937]" data-i18n="typingIndicator">Simulate Typing</p>
+                  <p class="text-[11px] text-[#6B7280] truncate" data-i18n="typingHint">Human-like typing before send</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="typingToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap" id="rephraseWrap">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#2266E2] flex-shrink-0">
+                  <i class="fas fa-wand-magic-sparkles text-[13px]"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[13px] font-medium text-[#1F2937]" data-i18n="smartRephrase">Smart Rephrase</p>
+                  <p class="text-[11px] text-[#6B7280] truncate" data-i18n="smartRephraseHint">Slight synonym swaps each send</p>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="rephraseToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap" id="rotateWrap">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-[#D97706] flex-shrink-0">
+                  <i class="fas fa-arrows-rotate text-[13px]"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[13px] font-medium text-[#1F2937]" data-i18n="rotateEvery5">Rotate Every 5</p>
+                  <p class="text-[11px] text-[#6B7280] truncate" data-i18n="rotateEvery5Hint">Auto-change wording every 5 sends</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="rotate-badge" id="rotateBadge">
+                  <i class="fas fa-repeat text-[10px]"></i>
+                  <span class="count" id="rotateCount">0</span><span>/5</span>
+                </span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="rotateToggle" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Send Timing -->
+          <div class="mb-5 p-4 rounded-lg bg-gray-50 border border-[#E5E7EB]">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center text-[#EA580C] flex-shrink-0">
+                  <i class="fas fa-clock text-[12px]"></i>
+                </div>
+                <p class="text-[13px] font-medium text-[#1F2937]" data-i18n="sendTiming">Send Timing</p>
+              </div>
+              <label class="toggle-switch small">
+                <input type="checkbox" id="timingToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="hidden space-y-2.5" id="timingControls">
+              <div class="flex items-center gap-3">
+                <div class="flex-1">
+                  <label class="text-[11px] font-medium text-[#6B7280] block mb-1" data-i18n="minDelay">Min delay (s)</label>
+                  <input type="number" class="input-field text-[13px] py-1.5" id="minDelay" value="5" min="1" max="60" />
+                </div>
+                <div class="flex-1">
+                  <label class="text-[11px] font-medium text-[#6B7280] block mb-1" data-i18n="maxDelay">Max delay (s)</label>
+                  <input type="number" class="input-field text-[13px] py-1.5" id="maxDelay" value="10" min="1" max="60" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Send Button -->
+          <div class="flex items-center gap-3">
+            <button type="submit" class="btn-primary" id="sendBtn" style="flex:1">
+              <i class="fab fa-whatsapp text-[17px]"></i>
+              <span id="btnText" data-i18n="sendOffer">Send Offer</span>
+              <span class="spinner hidden" id="btnSpinner"></span>
+            </button>
+            <div class="hidden flex items-center gap-2 text-[12px] text-[#6B7280]" id="typingIndicator">
+              <span class="w-2 h-2 rounded-full bg-[#25D366] animate-pulse"></span>
+              <span data-i18n="typingNow">typing...</span>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sidebar: Recent Activity -->
+      <div class="lg:col-span-2 card p-6 fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-[15px] font-semibold text-[#1F2937]" data-i18n="recentActivity">Recent Activity</h3>
+          <button class="btn-secondary text-[12px] px-3 py-1.5" id="clearHistory" data-i18n="clearAll">Clear All</button>
+        </div>
+        <div id="historyList">
+          <div class="empty-state" id="emptyState">
+            <i class="fas fa-inbox text-2xl mb-2 block opacity-50"></i>
+            <p data-i18n="noActivity">No messages sent yet</p>
+          </div>
+        </div>
+
+        <hr class="my-4 border-[#E5E7EB]" />
+
+        <!-- Bulk Import Section -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-[15px] font-semibold text-[#1F2937]" data-i18n="bulkImport">Bulk Import</h3>
+            <button class="text-[11px] text-[#2266E2] hover:text-[#1A56D6] font-medium flex items-center gap-1" id="downloadTemplate">
+              <i class="fas fa-download text-[10px]"></i>
+              <span data-i18n="downloadTemplate">Template</span>
+            </button>
+          </div>
+
+          <!-- Upload Area -->
+          <div class="border-2 border-dashed border-[#E5E7EB] rounded-lg p-5 text-center cursor-pointer hover:border-[#2266E2] hover:bg-blue-50/30 transition" id="uploadArea">
+            <input type="file" accept=".csv,.xlsx,.xls" class="hidden" id="fileInput" />
+            <i class="fas fa-cloud-upload-alt text-2xl text-[#9CA3AF] mb-2 block"></i>
+            <p class="text-[13px] text-[#6B7280] font-medium" data-i18n="dropFile">Drop Excel / CSV file here</p>
+            <p class="text-[11px] text-[#9CA3AF] mt-0.5" data-i18n="fileFormats">Supports .xlsx, .xls, .csv</p>
+          </div>
+
+          <!-- Imported Contacts -->
+          <div class="hidden mt-3" id="importSection">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <p class="text-[13px] font-medium text-[#1F2937]" id="importCount" data-i18n="contactsFound">0 contacts found</p>
+                <span class="hidden text-[11px] font-medium text-[#DC2626] bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex items-center gap-1" id="dupBadge">
+                  <i class="fas fa-copy text-[10px]"></i>
+                  <span id="dupCount">0</span>
+                  <span data-i18n="duplicates">duplicates</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button class="btn-secondary text-[11px] px-2.5 py-1 hidden" id="removeDupBtn" data-i18n="removeDups">Remove Dups</button>
+                <button class="btn-secondary text-[11px] px-2.5 py-1" id="clearImport" data-i18n="clear">Clear</button>
+                <button class="btn-secondary text-[11px] px-2.5 py-1 text-[#2266E2] border-[#2266E2] hover:bg-blue-50" id="sendAllBtn" data-i18n="sendAll">Send All</button>
+              </div>
+            </div>
+            <div class="max-h-[180px] overflow-y-auto space-y-1" id="contactsList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-[#E5E7EB] bg-white mt-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between text-[12px] text-[#9CA3AF]">
+      <span>&copy; 2026 <span data-i18n="footerText">Nexis — WhatsApp Dashboard. All rights reserved.</span></span>
+      <span class="hidden sm:block" data-i18n="footerSecure">Secured &amp; Encrypted</span>
+    </div>
+  </footer>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-[17px] font-semibold text-[#1F2937]" data-i18n="gatewaySettings">Gateway Settings</h2>
+        <button type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:bg-gray-100 transition" id="settingsModalClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- 1. Status Header -->
+      <div class="mb-5 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center gap-3" id="gwStatusHeader">
+        <div class="w-10 h-10 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#10B981] flex-shrink-0">
+          <i class="fas fa-check-circle text-lg"></i>
+        </div>
+        <div>
+          <p class="text-[14px] font-semibold text-[#1F2937]" data-i18n="gwConnected">Connected — WhatsApp is working</p>
+          <p class="text-[12px] text-[#6B7280] break-all" id="gwActiveUrl">https://your-api.onrender.com:443</p>
+        </div>
+      </div>
+
+      <!-- 2. Gateway Mode -->
+      <div class="mb-5">
+        <label class="text-[13px] font-semibold text-[#374151] mb-2 block" data-i18n="gatewayMode">Gateway Mode</label>
+        <div class="flex gap-2">
+          <button class="flex-1 py-2.5 px-3 rounded-lg border text-[13px] font-medium transition text-center" id="modeLink" data-mode="link">
+            <i class="fas fa-link text-[11px]"></i>
+            <span data-i18n="modeLink">Link (URL)</span>
+            <span class="block text-[11px] font-normal text-[#6B7280] mt-0.5" data-i18n="modeLinkDesc">Direct URL like onrender.com</span>
+          </button>
+          <button class="flex-1 py-2.5 px-3 rounded-lg border text-[13px] font-medium transition text-center" id="modeApi" data-mode="api">
+            <i class="fas fa-server text-[11px]"></i>
+            <span data-i18n="modeApi">API (EC2 + Proxy)</span>
+            <span class="block text-[11px] font-normal text-[#6B7280] mt-0.5" data-i18n="modeApiDesc">IP address + PHP proxy</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Configuration Inputs -->
+      <div class="mb-4">
+        <label class="text-[13px] font-semibold text-[#374151] mb-2 block" data-i18n="configuration">Configuration</label>
+        <div class="space-y-3">
+          <input type="text" class="input-field" id="gwUrlInput" placeholder="e.g. your-api.onrender.com" />
+          <input type="text" class="input-field" id="gwPortInput" placeholder="e.g. 443" />
+        </div>
+        <p class="text-[12px] text-[#6B7280] mt-1.5 flex items-center gap-1">
+          <i class="fas fa-info-circle"></i>
+          <span data-i18n="gwHelper">Sends directly to</span>
+          <code class="text-[#2266E2] bg-blue-50 px-1.5 py-0.5 rounded text-[11px]" id="gwPreview">https://url:port/send-message</code>
+        </p>
+      </div>
+
+      <!-- 4. Action Buttons -->
+      <div class="flex items-center gap-2 mb-6">
+        <button class="btn-primary flex-1 text-[13px] py-2.5" id="gwSaveBtn">
+          <i class="fas fa-save"></i>
+          <span data-i18n="saveReconnect">Save &amp; Reconnect</span>
+        </button>
+        <button class="btn-secondary text-[13px] py-2.5 px-3" id="gwResetBtn" data-i18n="resetDefault">Reset to Default</button>
+        <button class="btn-secondary text-[13px] py-2.5 px-3 text-[#EF4444] border-[#FECACA] hover:bg-red-50" id="gwResetServerBtn" data-i18n="resetServer">Reset Server</button>
+      </div>
+
+      <!-- 5. Test Message -->
+      <div class="border-t border-[#E5E7EB] pt-5">
+        <label class="text-[13px] font-semibold text-[#374151] mb-3 block uppercase tracking-wide" data-i18n="testMessage">TEST MESSAGE</label>
+        <div class="space-y-3">
+          <input type="tel" class="input-field" id="testPhone" placeholder="e.g. 966501234567" data-i18n-placeholder="testPhonePlaceholder" />
+          <input type="text" class="input-field" id="testMsg" value="Hello, this is a test message from your WhatsApp Gateway." />
+          <button class="btn-primary text-[13px] py-2.5" id="testSendBtn">
+            <i class="fas fa-paper-plane"></i>
+            <span data-i18n="sendTest">Send Test Message</span>
+            <span class="spinner hidden" id="testSpinner"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connect Device Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-[17px] font-semibold text-[#1F2937]" data-i18n="connectDeviceTitle">Connect WhatsApp Device</h2>
+        <button type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:bg-gray-100 transition" id="modalClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Connection Steps -->
+      <div class="mb-5">
+        <div class="status-step" id="step1"><div class="step-dot">1</div><span data-i18n="stepInit">Initializing connection...</span></div>
+        <div class="status-step" id="step2"><div class="step-dot">2</div><span data-i18n="stepQR">Generating QR code...</span></div>
+        <div class="status-step" id="step3"><div class="step-dot">3</div><span data-i18n="stepScan">Scan QR with WhatsApp</span></div>
+        <div class="status-step" id="step4"><div class="step-dot"><i class="fas fa-check text-[9px]"></i></div><span data-i18n="stepDone">Device connected</span></div>
+      </div>
+
+      <!-- QR Code Area -->
+      <div class="flex flex-col items-center mb-5">
+        <div class="w-[220px] h-[220px] rounded-xl border border-[#E5E7EB] overflow-hidden flex items-center justify-center bg-white" id="qrContainer">
+          <div class="qr-skeleton" id="qrSkeleton">
+            <i class="fas fa-qrcode text-3xl text-[#D1D5DB]"></i>
+          </div>
+          <img id="qrImage" class="hidden w-full h-full object-contain" src="" alt="QR Code" />
+          <div class="hidden flex-col items-center text-center" id="qrConnected">
+            <div class="w-16 h-16 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#10B981] text-3xl mb-2">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <p class="text-[14px] font-semibold text-[#1F2937]" data-i18n="deviceConnected">WhatsApp Connected</p>
+            <p class="text-[12px] text-[#6B7280] mt-0.5" id="deviceInfo" data-i18n="deviceInfo">Receiving messages in real-time</p>
+          </div>
+        </div>
+        <p class="text-[12px] text-[#6B7280] mt-2 text-center" id="qrStatusText" data-i18n="qrInstructions">Open WhatsApp > Linked Devices > Scan QR</p>
+      </div>
+
+      <!-- Advanced Settings Toggle -->
+      <div class="mb-4">
+        <button type="button" class="flex items-center gap-1.5 text-[12px] text-[#6B7280] hover:text-[#1F2937] transition w-full" id="settingsToggle">
+          <i class="fas fa-cog text-[11px] transition-transform duration-200" id="settingsIcon"></i>
+          <span data-i18n="advancedSettings">Advanced Settings</span>
+        </button>
+      </div>
+
+      <!-- Advanced Settings Panel -->
+      <div class="hidden mb-5 p-4 rounded-lg bg-gray-50 border border-[#E5E7EB] space-y-3" id="settingsPanel">
+        <!-- API Endpoint -->
+        <div class="flex items-center justify-between">
+          <label for="apiInput" class="text-[12px] font-medium text-[#374151] mb-0" data-i18n="apiEndpoint">API Endpoint</label>
+          <label class="toggle-switch small">
+            <input type="checkbox" id="apiToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="text" class="input-field text-[12px] py-1.5" id="apiInput" placeholder="https://your-server.onrender.com" />
+          <button class="btn-secondary text-[11px] px-2.5 py-1.5 flex-shrink-0" id="apiSaveBtn" data-i18n="save">Save</button>
+        </div>
+        <div class="border-t border-[#E5E7EB] my-1"></div>
+        <!-- WebSocket Link -->
+        <div class="flex items-center justify-between">
+          <label for="wsInput" class="text-[12px] font-medium text-[#374151] mb-0" data-i18n="wsLink">WS Link</label>
+          <label class="toggle-switch small">
+            <input type="checkbox" id="wsToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="text" class="input-field text-[12px] py-1.5" id="wsInput" placeholder="wss://your-server.onrender.com" />
+          <button class="btn-secondary text-[11px] px-2.5 py-1.5 flex-shrink-0" id="wsSaveBtn" data-i18n="save">Save</button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2">
+        <button class="btn-primary flex-1" id="connectActionBtn">
+          <i class="fas fa-plug"></i>
+          <span id="connectActionText" data-i18n="connectNow">Connect</span>
+          <span class="spinner hidden" id="connectSpinner"></span>
+        </button>
+        <button class="btn-secondary flex-1" id="disconnectBtn">
+          <i class="fas fa-power-off text-[#EF4444]"></i>
+          <span data-i18n="disconnect">Disconnect</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0" id="toastIcon">
+      <i class="fas fa-check"></i>
+    </div>
+    <div>
+      <p class="text-[14px] font-semibold text-[#1F2937]" id="toastTitle">Success</p>
+      <p class="text-[13px] text-[#6B7280]" id="toastMessage">Message sent successfully</p>
+    </div>
+  </div>
+
+  <!-- Keyboard shortcut hint -->
+  <div class="fixed bottom-6 left-6 hidden sm:block text-[12px] text-[#9CA3AF] bg-white px-3 py-1.5 rounded-lg border border-[#E5E7EB] shadow-sm">
+    <kbd class="bg-gray-100 px-1.5 py-0.5 rounded text-[11px] font-mono">Ctrl+Enter</kbd>
+    <span data-i18n="toSend">to send</span>
+  </div>
+
+  <script>
+    // ==================== i18n ====================
+    const i18n = {
+      en: {
+        appTitle: "WhatsApp Dashboard",
+        appSubtitle: "Messaging Platform",
+        connected: "Connected",
+        messagesSent: "Messages Sent",
+        delivered: "Delivered",
+        pending: "Pending",
+        sendOfferTitle: "Send WhatsApp Offer",
+        phoneLabel: "Phone Number",
+        phonePlaceholder: "10XXXXXXXX",
+        phoneHint: "Enter number without country code",
+        nameLabel: "Patient Name",
+        namePlaceholder: "e.g. Ahmed Hassan",
+        messageLabel: "Offer Message",
+        messagePlaceholder: "Type your offer message...",
+        preview: "Preview",
+        sendOffer: "Send Offer",
+        sending: "Sending...",
+        recentActivity: "Recent Activity",
+        clearAll: "Clear All",
+        noActivity: "No messages sent yet",
+        footerText: "Nexis — WhatsApp Dashboard. All rights reserved.",
+        footerSecure: "Secured & Encrypted",
+        toSend: "to send",
+        toastSent: "Message Sent!",
+        toastSentMsg: "Offer has been sent via WhatsApp successfully.",
+        toastError: "Send Failed",
+        toastErrorMsg: "Please check the phone number and try again.",
+        toastValidation: "Missing Fields",
+        toastValidationMsg: "Please fill in all required fields.",
+        toastCleared: "History Cleared",
+        toastClearedMsg: "All recent activity has been removed.",
+        invalidPhone: "Please enter a valid phone number",
+        smartRephrase: "Smart Rephrase",
+        smartRephraseHint: "Subtle AI rewording on send",
+        rotateEvery5: "Rotate Every 5",
+        rotateEvery5Hint: "Auto-change wording every 5 sends",
+        variant: "Variant",
+        rephraseActive: "Rephrase Active",
+        rephraseInactive: "Rephrase Off",
+        rotateActive: "Rotation Active",
+        rotateInactive: "Rotation Off",
+        rotateCount: "Sends on this variant",
+        useName: "Use Patient Name",
+        useNameHint: "Replace {{name}} in message",
+        variablesHint: "Insert:",
+        sendTiming: "Send Timing",
+        minDelay: "Min delay (s)",
+        maxDelay: "Max delay (s)",
+        typingIndicator: "Simulate Typing",
+        typingHint: "Human-like typing before send",
+        typingNow: "typing...",
+        attachImage: "Attach Image",
+        aiActive: "AI",
+        bulkImport: "Bulk Import",
+        dropFile: "Drop Excel / CSV file here",
+        fileFormats: "Supports .xlsx, .xls, .csv",
+        contactsFound: "0 contacts found",
+        sendAll: "Send All",
+        clear: "Clear",
+        downloadTemplate: "Template",
+        duplicates: "duplicates",
+        removeDups: "Remove Dups",
+        importSuccess: "Contacts Imported",
+        importSuccessMsg: "contacts loaded from file.",
+        importError: "Import Failed",
+        importErrorMsg: "Could not read file. Check the format.",
+        noPhoneColumn: "No phone column found",
+        noPhoneColumnMsg: "File must contain a 'phone' or 'number' column.",
+        dupRemoved: "Duplicates Removed",
+        dupRemovedMsg: "duplicate entries removed.",
+        dupFound: "Duplicate Phones Detected",
+        dupFoundMsg: "phone numbers are duplicated.",
+        templateDownloaded: "Template Downloaded",
+        templateDownloadedMsg: "Edit it with your data and re-upload.",
+        connectDevice: "Connect Device",
+        connectDeviceTitle: "Connect WhatsApp Device",
+        stepInit: "Initializing connection...",
+        stepQR: "Generating QR code...",
+        stepScan: "Scan QR with WhatsApp",
+        stepDone: "Device connected",
+        qrInstructions: "Open WhatsApp > Linked Devices > Scan QR",
+        deviceConnected: "WhatsApp Connected",
+        deviceInfo: "Receiving messages in real-time",
+        connectNow: "Connect",
+        disconnect: "Disconnect",
+        disconnecting: "Disconnecting...",
+        statusConnected: "Connected",
+        statusDisconnected: "Disconnected",
+        statusConnecting: "Connecting...",
+        qrFailed: "Failed to generate QR",
+        qrFailedMsg: "Check backend is running on port 3000",
+        advancedSettings: "Advanced Settings",
+        apiEndpoint: "API Endpoint",
+        wsLink: "WS Link",
+        save: "Save",
+        settingsSaved: "Settings Saved",
+        settingsSavedMsg: "Configuration has been updated.",
+        gatewaySettings: "Gateway Settings",
+        gwConnected: "Connected — WhatsApp is working",
+        gatewayMode: "Gateway Mode",
+        modeLink: "Link (URL)",
+        modeLinkDesc: "Direct URL like onrender.com",
+        modeApi: "API (EC2 + Proxy)",
+        modeApiDesc: "IP address + PHP proxy",
+        configuration: "Configuration",
+        gwHelper: "Sends directly to",
+        saveReconnect: "Save & Reconnect",
+        resetDefault: "Reset to Default",
+        resetServer: "Reset Server",
+        testMessage: "TEST MESSAGE",
+        sendTest: "Send Test Message",
+        testPhonePlaceholder: "e.g. 966501234567",
+        gwSaved: "Settings Saved",
+        gwSavedMsg: "Gateway configuration updated. Reconnecting...",
+        gwReset: "Reset to Default",
+        gwResetMsg: "Gateway settings restored to defaults.",
+        gwResetServer: "Server Reset",
+        gwResetServerMsg: "Reset command sent to server.",
+        testSending: "Sending test message...",
+        testSent: "Test Message Sent",
+        testSentMsg: "Test message delivered successfully.",
+        testFailed: "Test Failed",
+        testFailedMsg: "Could not reach the gateway URL.",
+        logout: "Logout",
+      },
+      ar: {
+        appTitle: "لوحة تحكم واتساب",
+        appSubtitle: "منصة الرسائل",
+        connected: "متصل",
+        messagesSent: "الرسائل المرسلة",
+        delivered: "تم التوصيل",
+        pending: "قيد الانتظار",
+        sendOfferTitle: "إرسال عرض واتساب",
+        phoneLabel: "رقم الهاتف",
+        phonePlaceholder: "10XXXXXXXX",
+        phoneHint: "أدخل الرقم بدون مفتاح الدولة",
+        nameLabel: "اسم المريض",
+        namePlaceholder: "مثال: أحمد حسن",
+        messageLabel: "نص العرض",
+        messagePlaceholder: "اكتب نص العرض هنا...",
+        preview: "معاينة",
+        sendOffer: "إرسال العرض",
+        sending: "جاري الإرسال...",
+        recentActivity: "النشاط الأخير",
+        clearAll: "مسح الكل",
+        noActivity: "لم يتم إرسال أي رسائل بعد",
+        footerText: "Nexis — لوحة تحكم واتساب. جميع الحقوق محفوظة.",
+        footerSecure: "مؤمن ومشفر",
+        toSend: "لإرسال",
+        toastSent: "تم الإرسال!",
+        toastSentMsg: "تم إرسال العرض عبر واتساب بنجاح.",
+        toastError: "فشل الإرسال",
+        toastErrorMsg: "يرجى التحقق من رقم الهاتف والمحاولة مرة أخرى.",
+        toastValidation: "حقول ناقصة",
+        toastValidationMsg: "يرجى ملء جميع الحقول المطلوبة.",
+        toastCleared: "تم المسح",
+        toastClearedMsg: "تم حذف جميع الأنشطة الأخيرة.",
+        invalidPhone: "يرجى إدخال رقم هاتف صحيح",
+        smartRephrase: "إعادة الصياغة الذكية",
+        smartRephraseHint: "إعادة صياغة خفيفة تلقائياً",
+        rotateEvery5: "تدوير كل 5 رسائل",
+        rotateEvery5Hint: "تغيير تلقائي للنص كل 5 إرسالات",
+        variant: "نسخة",
+        rephraseActive: "إعادة الصياغة نشطة",
+        rephraseInactive: "إعادة الصياغة متوقفة",
+        rotateActive: "التدوير نشط",
+        rotateInactive: "التدوير متوقف",
+        rotateCount: "الإرسالات في هذه النسخة",
+        useName: "استخدام اسم المريض",
+        useNameHint: "استبدال {{name}} في الرسالة",
+        variablesHint: "إدراج:",
+        sendTiming: "توقيت الإرسال",
+        minDelay: "أقل تأخير (ث)",
+        maxDelay: "أقصى تأخير (ث)",
+        typingIndicator: "محاكاة الكتابة",
+        typingHint: "كتابة بشرية قبل الإرسال",
+        typingNow: "يكتب...",
+        attachImage: "إرفاق صورة",
+        aiActive: "AI",
+        bulkImport: "استيراد جماعي",
+        dropFile: "أسقط ملف Excel أو CSV هنا",
+        fileFormats: "يدعم .xlsx, .xls, .csv",
+        contactsFound: "0 جهات اتصال",
+        sendAll: "إرسال الكل",
+        clear: "مسح",
+        downloadTemplate: "نموذج",
+        duplicates: "مكرر",
+        removeDups: "إزالة المكرر",
+        importSuccess: "تم الاستيراد",
+        importSuccessMsg: "جهة اتصال تم تحميلها من الملف.",
+        importError: "فشل الاستيراد",
+        importErrorMsg: "تعذر قراءة الملف. تحقق من الصيغة.",
+        noPhoneColumn: "عمود الهاتف مفقود",
+        noPhoneColumnMsg: "يجب أن يحتوي الملف على عمود 'phone' أو 'number'.",
+        dupRemoved: "تم إزالة المكرر",
+        dupRemovedMsg: "جهة اتصال مكررة تم إزالتها.",
+        dupFound: "تم العثور على أرقام مكررة",
+        dupFoundMsg: "رقم هاتف مكرر.",
+        templateDownloaded: "تم تحميل النموذج",
+        templateDownloadedMsg: "قم بتعديله ببياناتك وأعد رفعه.",
+        connectDevice: "توصيل جهاز",
+        connectDeviceTitle: "توصيل جهاز واتساب",
+        stepInit: "جارٍ تهيئة الاتصال...",
+        stepQR: "جارٍ إنشاء رمز QR...",
+        stepScan: "امسح QR باستخدام واتساب",
+        stepDone: "تم توصيل الجهاز",
+        qrInstructions: "افتح واتساب > الأجهزة المرتبطة > امسح QR",
+        deviceConnected: "واتساب متصل",
+        deviceInfo: "استقبال الرسائل في الوقت الفعلي",
+        connectNow: "اتصال",
+        disconnect: "قطع الاتصال",
+        disconnecting: "جاري قطع الاتصال...",
+        statusConnected: "متصل",
+        statusDisconnected: "غير متصل",
+        statusConnecting: "جارٍ الاتصال...",
+        qrFailed: "فشل إنشاء QR",
+        qrFailedMsg: "تأكد من تشغيل الخادم على المنفذ 3000",
+        advancedSettings: "الإعدادات المتقدمة",
+        apiEndpoint: "رابط API",
+        wsLink: "رابط WebSocket",
+        save: "حفظ",
+        settingsSaved: "تم حفظ الإعدادات",
+        settingsSavedMsg: "تم تحديث التكوين بنجاح.",
+        gatewaySettings: "إعدادات البوابة",
+        gwConnected: "متصل — واتساب يعمل",
+        gatewayMode: "وضع البوابة",
+        modeLink: "رابط (URL)",
+        modeLinkDesc: "رابط مباشر مثل onrender.com",
+        modeApi: "API (EC2 + Proxy)",
+        modeApiDesc: "عنوان IP + وكيل PHP",
+        configuration: "الإعدادات",
+        gwHelper: "يرسل مباشرة إلى",
+        saveReconnect: "حفظ وإعادة الاتصال",
+        resetDefault: "إعادة للافتراضي",
+        resetServer: "إعادة تشغيل الخادم",
+        testMessage: "رسالة اختبار",
+        sendTest: "إرسال رسالة اختبار",
+        testPhonePlaceholder: "مثال 966501234567",
+        gwSaved: "تم الحفظ",
+        gwSavedMsg: "تم تحديث إعدادات البوابة. جاري إعادة الاتصال...",
+        gwReset: "إعادة للافتراضي",
+        gwResetMsg: "تم استعادة الإعدادات الافتراضية.",
+        gwResetServer: "إعادة تشغيل الخادم",
+        gwResetServerMsg: "تم إرسال أمر إعادة التشغيل إلى الخادم.",
+        testSending: "جاري إرسال رسالة اختبار...",
+        testSent: "تم إرسال الاختبار",
+        testSentMsg: "تم تسليم رسالة الاختبار بنجاح.",
+        testFailed: "فشل الاختبار",
+        testFailedMsg: "تعذر الوصول إلى رابط البوابة.",
+        logout: "تسجيل خروج",
+      }
+    };
+
+    let currentLang = "en";
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      const t = i18n[lang];
+      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+      document.documentElement.lang = lang;
+
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        if (t[key]) el.textContent = t[key];
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (t[key]) el.placeholder = t[key];
+      });
+
+      document.querySelectorAll(".lang-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.lang === lang);
+      });
+
+      updatePreview();
+      updateCharCounter();
+      updateVariantBadge();
+      // Sync msg dir toggle with language
+      const dir = lang === "ar" ? "rtl" : "ltr";
+      messageInput.dir = dir;
+      messageInput.style.textAlign = dir === "rtl" ? "right" : "left";
+      document.querySelectorAll("#msgDirToggle button").forEach(b => {
+        const isActive = b.dataset.dir === dir;
+        b.classList.toggle("bg-[#2266E2]", isActive);
+        b.classList.toggle("text-white", isActive);
+        b.classList.toggle("text-[#6B7280]", !isActive);
+        b.classList.toggle("hover:bg-gray-100", !isActive);
+      });
+    }
+
+    document.querySelectorAll(".lang-btn").forEach(btn => {
+      btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+    });
+
+    // ==================== Toast ====================
+    let toastTimeout;
+
+    function showToast(type, title, message, icon) {
+      const toast = document.getElementById("toast");
+      const toastIcon = document.getElementById("toastIcon");
+      const toastTitle = document.getElementById("toastTitle");
+      const toastMessage = document.getElementById("toastMessage");
+
+      toast.className = "toast " + type;
+      toastIcon.className =
+        "w-8 h-8 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 " +
+        (type === "success" ? "bg-[#10B981]" : type === "warning" ? "bg-[#F59E0B]" : "bg-[#EF4444]");
+      toastIcon.innerHTML = icon || (type === "success" ? '<i class="fas fa-check"></i>' : type === "warning" ? '<i class="fas fa-exclamation-triangle"></i>' : '<i class="fas fa-times"></i>');
+      toastTitle.textContent = title;
+      toastMessage.textContent = message;
+
+      clearTimeout(toastTimeout);
+      toast.classList.remove("hiding");
+      toast.classList.add("show");
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.add("hiding");
+        setTimeout(() => toast.classList.remove("show", "hiding"), 300);
+      }, 4000);
+    }
+
+    // ==================== Synonym Map for Smart Rephrase ====================
+    const synonymMap = {
+      special: ['exclusive', 'limited', 'unique', 'premium', 'personalized', 'handpicked'],
+      healthcare: ['medical', 'wellness', 'health', 'clinical', 'therapeutic'],
+      offer: ['package', 'deal', 'proposal', 'program', 'plan', 'proposition'],
+      great: ['excellent', 'wonderful', 'amazing', 'fantastic', 'remarkable', 'outstanding'],
+      get: ['receive', 'claim', 'avail', 'enjoy', 'secure', 'grab'],
+      discount: ['savings', 'reduction', 'special rate', 'price cut', 'markdown'],
+      visit: ['appointment', 'checkup', 'consultation', 'session', 'check-in'],
+      free: ['complimentary', 'gratis', 'no-cost', 'on us', 'zero-fee'],
+      call: ['contact', 'reach', 'message', 'ping', 'text', 'notify'],
+      today: ['now', 'this week', 'shortly', 'right away', 'promptly'],
+      best: ['finest', 'top', 'leading', 'premier', 'exceptional', 'first-rate'],
+      new: ['latest', 'fresh', 'updated', 'modern', 'current', 'brand-new'],
+      help: ['assist', 'support', 'aid', 'guide', 'help'],
+      save: ['cut costs', 'reduce', 'lower', 'minimize'],
+      quality: ['standard', 'excellence', 'premium', 'high-grade'],
+      care: ['treatment', 'service', 'attention', 'support'],
+      reply: ['respond', 'answer', 'write back', 'get back', 'reach out'],
+      details: ['info', 'information', 'particulars', 'specifics', 'full details'],
+      book: ['reserve', 'schedule', 'secure', 'arrange', 'set up'],
+      available: ['accessible', 'open', 'on offer', 'ready', 'up for grabs'],
+      welcome: ['invited', 'encouraged', 'urged', 'prompted'],
+      hi: ['hello', 'hey', 'dear', 'greetings'],
+      hello: ['hi', 'hey', 'dear', 'greetings'],
+      hey: ['hi', 'hello', 'dear', 'greetings'],
+      dear: ['hi', 'hello', 'hey', 'greetings'],
+      we: ['our team', 'we at', 'we are', 'the clinic', 'our center'],
+      you: ['you', 'yourself'],
+      your: ['your', 'a'],
+      visit: ['appointment', 'checkup', 'consultation', 'session', 'check-in'],
+      up: ['up', 'coming'],
+      out: ['out', 'us', 'back'],
+      for: ['for', 'on', 'toward'],
+      off: ['off', 'reduction', 'discount'],
+      on: ['on', 'for', 'toward'],
+      next: ['upcoming', 'following', 'next'],
+      details: ['details', 'info', 'information', 'particulars'],
+      claim: ['claim', 'avail', 'get', 'avail of', 'receive'],
+      selected: ['chosen', 'picked', 'shortlisted', 'invited'],
+      limited: ['exclusive', 'special', 'restricted', 'one-time'],
+      wellness: ['health', 'healthcare', 'medical', 'wellbeing'],
+      savings: ['discount', 'savings', 'reduction', 'benefits'],
+      big: ['large', 'significant', 'generous', 'great'],
+      now: ['today', 'now', 'right now', 'immediately', 'promptly'],
+      confirm: ['confirm', 'reply', 'respond', 'answer back', 'say yes'],
+      learn: ['learn', 'find out', 'discover', 'hear', 'know'],
+      great: ['excellent', 'wonderful', 'amazing', 'fantastic', 'remarkable', 'outstanding'],
+      news: ['update', 'news', 'announcement', 'information'],
+      message: ['message', 'text', 'note', 'word', 'line'],
+      send: ['send', 'drop', 'shoot', 'write'],
+      proceed: ['proceed', 'continue', 'go ahead', 'confirm', 'move forward'],
+      ready: ['ready', 'prepared', 'set', 'available', 'arranged'],
+      exclusive: ['special', 'exclusive', 'premium', 'unique', 'limited'],
+      opportunity: ['chance', 'opportunity', 'offer', 'deal', 'opening'],
+      dont: ["don't", "do not"],
+      miss: ['miss', 'skip', 'pass up', 'lose'],
+      program: ['program', 'plan', 'package', 'offer', 'initiative'],
+      take: ['take', 'avail', 'get', 'have', 'seize'],
+      advantage: ['advantage', 'benefit', 'opportunity', 'offer', 'deal'],
+    };
+
+    // ==================== Message Variants for Rotation ====================
+    const defaultVariants = [
+      "Hi {{name}}, we have a special healthcare offer for you! Get 20% off on your next visit. Reply for details.",
+      "Hello {{name}}, we've prepared an exclusive medical package just for you — enjoy 20% off your next checkup. Message us to claim!",
+      "Hey {{name}}, great news! You've been selected for a limited wellness discount of 20% on your upcoming visit. Reach out to learn more.",
+      "Dear {{name}}, we're offering a premium healthcare deal: 20% off your next appointment. Contact us to reserve your spot!",
+      "Hi {{name}}, claim your 20% wellness savings today! Book your next consultation and save big. Reply now to confirm.",
+      "Hello {{name}}, your personalized health plan is ready — 20% off your next session. Let us know if you'd like to proceed!",
+      "Hey {{name}}, don't miss this exclusive opportunity! Get 20% off your next visit with our latest wellness program. Send us a message to opt in.",
+      "Dear {{name}}, we have a special 20% discount reserved just for you on your upcoming medical visit. Reach out to take advantage!",
+    ];
+
+    // Load user-customized variants from localStorage (fallback to defaults)
+    const savedVariants = JSON.parse(localStorage.getItem("whatsapp_variants") || "null");
+    let messageVariants = savedVariants && Array.isArray(savedVariants) && savedVariants.length === 8
+      ? savedVariants : [...defaultVariants];
+
+    // ==================== Arabic Synonym Map ====================
+    const synonymMapAr = {
+      خاص: ['حصري', 'مميز', 'فريد', 'مختار', 'مخصص'],
+      عرض: ['باقة', 'خطة', 'برنامج', 'مقترح', 'صفقة', 'عرض مميز'],
+      طبي: ['صحي', 'علاجي', 'سريري', 'طبّي متكامل'],
+      رائع: ['ممتاز', 'جميل', 'مذهل', 'خيالي', 'استثنائي'],
+      'احصل': ['استلم', 'استفد', 'تمتع', 'استحوذ', 'احصل على'],
+      خصم: ['توفير', 'تخفيض', 'سعر خاص', 'حسم', 'نسبة مخفضة'],
+      زيارة: ['موعد', 'فحص', 'كشف', 'جلسة', 'مراجعة', 'كشف طبي'],
+      مجاني: ['بدون مقابل', 'هدية', 'دون رسوم', 'مجانا'],
+      اتصل: ['تواصل', 'راسل', 'أرسل', 'كلم', 'نادينا'],
+      اليوم: ['الآن', 'هذا الأسبوع', 'قريبا', 'فوراً', 'حالاً'],
+      جديد: ['أحدث', 'مبتكر', 'عصري', 'حديث', 'متجدد'],
+      مساعدة: ['دعم', 'مساندة', 'إرشاد', 'توجيه', 'عون'],
+      جودة: ['تميز', 'امتياز', 'مستوى عال', 'نوعية ممتازة'],
+      رعاية: ['علاج', 'خدمة', 'اهتمام', 'دعم صحي', 'عناية'],
+      رد: ['أجب', 'تواصل', 'راسل', 'اكتب', 'جاوب'],
+      تفاصيل: ['معلومات', 'بيانات', 'التفاصيل كاملة', 'المزيد'],
+      احجز: ['وفر', 'أمن', 'رتب', 'حدد موعد', 'احجز موعد'],
+      متاح: ['متوفر', 'مفتوح', 'جاهز', 'موجود', 'مضمون'],
+      صحي: ['طبي', 'علاجي', 'وقائي', 'صحي متكامل'],
+      سارع: ['بادر', 'أسرع', 'لا تفوت', 'اغتنم', 'بادر الآن'],
+      فرصة: ['عرض', 'باقة', 'مقترح', 'فرصة مميزة', 'عرض محدود'],
+      ممتاز: ['رائع', 'مذهل', 'متميز', 'استثنائي', 'خيار أول'],
+    };
+
+    // Normalize Arabic text: remove definite article (ال) and some prefixes
+    function normalizeArabicWord(word) {
+      let w = word.replace(/[^\u0600-\u06FFa-zA-Z]/g, '');
+      if (w.startsWith('بال')) w = w.slice(2);
+      else if (w.startsWith('بـ')) w = w.slice(1);
+      else if (w.startsWith('و')) w = w.slice(1);
+      else if (w.startsWith('فـ')) w = w.slice(1);
+      else if (w.startsWith('لل')) w = w.slice(2);
+      else if (w.startsWith('ال')) w = w.slice(2);
+      return w;
+    }
+
+    // ==================== Smart Rephrase Engine ====================
+    function detectLang(text) {
+      const arabic = text.match(/[\u0600-\u06FF]/g);
+      return arabic && arabic.length > text.length * 0.1 ? 'ar' : 'en';
+    }
+
+    function rephraseMessage(text, lang) {
+      const detected = detectLang(text);
+      const map = detected === 'ar' ? synonymMapAr : synonymMap;
+      let words = text.split(/(\s+)/);
+      let changed = 0;
+      const targetChanges = Math.max(2, Math.ceil(words.length / 6));
+
+      for (let i = 0; i < words.length; i++) {
+        // Skip placeholders like {{name}}, {{number}}
+        if (words[i].includes('{{') && words[i].includes('}}')) continue;
+
+        const clean = detected === 'ar'
+          ? normalizeArabicWord(words[i])
+          : words[i].replace(/[^a-zA-Z]/g, '').toLowerCase();
+
+        if (!clean || clean.length < 2) continue;
+
+        if (map[clean] && Math.random() < 0.5 && changed < targetChanges) {
+          const synonyms = map[clean];
+          const replacement = synonyms[Math.floor(Math.random() * synonyms.length)];
+
+          if (detected === 'ar') {
+            const prefixMatch = words[i].match(/^(بـ?|و|فـ?|ال|لل)/);
+            if (prefixMatch) {
+              words[i] = prefixMatch[1] + replacement;
+            } else {
+              words[i] = replacement;
+            }
+          } else {
+            const orig = words[i];
+            const alphaStart = orig.search(/[a-zA-Z]/);
+            if (alphaStart !== -1) {
+              const prefix = orig.slice(0, alphaStart);
+              const suffix = orig.slice(alphaStart + clean.length);
+              words[i] = prefix + replacement + suffix;
+            } else {
+              words[i] = replacement;
+            }
+          }
+          changed++;
+        }
+      }
+      return words.join('');
+    }
+
+    // ==================== State ====================
+    let smartRephraseEnabled = true;
+    let useNameEnabled = true;
+    let rotationEnabled = false;
+    let timingEnabled = false;
+    let typingEnabled = true;
+    let minDelaySec = 5;
+    let maxDelaySec = 10;
+    let currentVariantIndex = 0;
+    let sendsOnThisVariant = 0;
+    let variantEnabled = new Array(8).fill(true);
+
+    // Load state from localStorage
+    const savedState = JSON.parse(localStorage.getItem("whatsapp_features") || '{}');
+    if (savedState.rephrase !== undefined) smartRephraseEnabled = savedState.rephrase;
+    if (savedState.useName !== undefined) useNameEnabled = savedState.useName;
+    if (savedState.timingEnabled !== undefined) timingEnabled = savedState.timingEnabled;
+    if (savedState.typingEnabled !== undefined) typingEnabled = savedState.typingEnabled;
+    if (savedState.minDelay !== undefined) minDelaySec = savedState.minDelay;
+    if (savedState.maxDelay !== undefined) maxDelaySec = savedState.maxDelay;
+    if (savedState.rotation !== undefined) rotationEnabled = savedState.rotation;
+    if (savedState.variantIndex !== undefined) currentVariantIndex = savedState.variantIndex;
+    if (savedState.sendCount !== undefined) sendsOnThisVariant = savedState.sendCount;
+    if (savedState.enabledVariants) variantEnabled = savedState.enabledVariants;
+
+    // ==================== Form Logic ====================
+    const phoneInput = document.getElementById("phoneInput");
+    const nameInput = document.getElementById("nameInput");
+    const messageInput = document.getElementById("messageInput");
+    const countryCode = document.getElementById("countryCode");
+    const sendBtn = document.getElementById("sendBtn");
+    const btnText = document.getElementById("btnText");
+    const btnSpinner = document.getElementById("btnSpinner");
+    const previewText = document.getElementById("previewText");
+    const previewImage = document.getElementById("previewImage");
+    const charCounter = document.getElementById("charCounter");
+    const historyList = document.getElementById("historyList");
+    const emptyState = document.getElementById("emptyState");
+    const statsSent = document.getElementById("statsSent");
+    const statsDelivered = document.getElementById("statsDelivered");
+    const statsPending = document.getElementById("statsPending");
+    const rephraseToggle = document.getElementById("rephraseToggle");
+    const nameToggle = document.getElementById("nameToggle");
+    const rotateToggle = document.getElementById("rotateToggle");
+    const rephraseWrap = document.getElementById("rephraseWrap");
+    const nameWrap = document.getElementById("nameWrap");
+    const rotateWrap = document.getElementById("rotateWrap");
+    const rotateCount = document.getElementById("rotateCount");
+    const rephrasePreviewWrap = document.getElementById("rephrasePreviewWrap");
+    const rephrasePreviewText = document.getElementById("rephrasePreviewText");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const aiBadge = document.getElementById("aiBadge");
+    const variantRow = document.getElementById("variantRow");
+    const timingToggle = document.getElementById("timingToggle");
+    const timingControls = document.getElementById("timingControls");
+    const minDelayInput = document.getElementById("minDelay");
+    const maxDelayInput = document.getElementById("maxDelay");
+    const typingToggle = document.getElementById("typingToggle");
+    const typingWrap = document.getElementById("typingWrap");
+    const typingIndicatorEl = document.getElementById("typingIndicator");
+    const attachImageInput = document.getElementById("attachImageInput");
+    const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+    const imagePreview = document.getElementById("imagePreview");
+    const imageFileName = document.getElementById("imageFileName");
+    const removeImageBtn = document.getElementById("removeImageBtn");
+    let attachedImage = null; // { dataUrl, name }
+
+    // Init toggles from saved state
+    rephraseToggle.checked = smartRephraseEnabled;
+    nameToggle.checked = useNameEnabled;
+    document.getElementById("nameFieldWrap").classList.toggle("hidden", !useNameEnabled);
+    nameInput.required = useNameEnabled;
+    rotateToggle.checked = rotationEnabled;
+    rephraseWrap.classList.toggle("active", smartRephraseEnabled);
+    nameWrap.classList.toggle("active", useNameEnabled);
+    rotateWrap.classList.toggle("active", rotationEnabled);
+    timingToggle.checked = timingEnabled;
+    timingControls.classList.toggle("hidden", !timingEnabled);
+    minDelayInput.value = minDelaySec;
+    maxDelayInput.value = maxDelaySec;
+    typingToggle.checked = typingEnabled;
+    typingWrap.classList.toggle("active", typingEnabled);
+
+    // Load history from localStorage
+    let history = JSON.parse(localStorage.getItem("whatsapp_history") || "[]");
+    let stats = JSON.parse(localStorage.getItem("whatsapp_stats") || '{"sent":0,"delivered":0,"pending":0}');
+
+    function saveFeaturesState() {
+      localStorage.setItem("whatsapp_features", JSON.stringify({
+        rephrase: smartRephraseEnabled,
+        useName: useNameEnabled,
+        timingEnabled: timingEnabled,
+        typingEnabled: typingEnabled,
+        minDelay: minDelaySec,
+        maxDelay: maxDelaySec,
+        rotation: rotationEnabled,
+        variantIndex: currentVariantIndex,
+        sendCount: sendsOnThisVariant,
+        enabledVariants: variantEnabled,
+      }));
+      // Save custom variant texts
+      localStorage.setItem("whatsapp_variants", JSON.stringify(messageVariants));
+    }
+
+    function updateStats() {
+      statsSent.textContent = stats.sent;
+      statsDelivered.textContent = stats.delivered;
+      statsPending.textContent = stats.pending;
+      localStorage.setItem("whatsapp_stats", JSON.stringify(stats));
+    }
+
+    function renderHistory() {
+      const items = historyList.querySelectorAll(".history-item");
+      items.forEach(el => el.remove());
+
+      if (history.length === 0) {
+        emptyState.style.display = "block";
+        updateStats();
+        return;
+      }
+      emptyState.style.display = "none";
+
+      history.slice().reverse().forEach((entry, idx) => {
+        const div = document.createElement("div");
+        div.className = "history-item slide-in";
+        div.style.animationDelay = (idx * 0.05) + "s";
+        const fullNumber = entry.countryCode + entry.phone;
+        const t = i18n[currentLang];
+        const features = [];
+        if (entry.rephrased) features.push('<i class="fas fa-wand-magic-sparkles text-[#2266E2]"></i>');
+        if (entry.variant !== undefined) features.push(`<span class="text-[10px] text-[#6B7280]">v${entry.variant + 1}</span>`);
+        if (entry.hasImage) features.push('<i class="fas fa-image text-[#F59E0B]"></i>');
+        const featStr = features.length ? `<span class="flex items-center gap-1 ml-1">${features.join('')}</span>` : '';
+        div.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#166534] flex-shrink-0">
+              <i class="fab fa-whatsapp text-[13px]"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[13px] font-medium text-[#1F2937] truncate">${entry.name}</p>
+              <p class="text-[11px] text-[#6B7280]">${fullNumber} &middot; ${entry.time}${featStr}</p>
+            </div>
+          </div>
+          <span class="text-[11px] text-[#10B981] font-medium flex-shrink-0 ml-2">${t.delivered}</span>
+        `;
+        historyList.appendChild(div);
+      });
+
+      updateStats();
+    }
+
+    function updatePreview() {
+      const name = useNameEnabled ? (nameInput.value.trim() || (currentLang === "ar" ? "المريض" : "Patient")) : "";
+      const number = countryCode.value + (phoneInput.value.trim() || "XXXXXXXXXX");
+      const msg = messageInput.value || "";
+      let preview = useNameEnabled ? msg.replace(/\{\{name\}\}/g, name) : msg.replace(/\{\{name\}\}\s*/g, "");
+      preview = preview.replace(/\{\{number\}\}/g, number);
+      previewText.textContent = preview || (currentLang === "ar" ? "معاينة الرسالة..." : "Message preview...");
+      if (attachedImage) {
+        previewImage.src = attachedImage.dataUrl;
+        previewImage.classList.remove("hidden");
+      } else {
+        previewImage.classList.add("hidden");
+        previewImage.src = "";
+      }
+    }
+
+    function updateCharCounter() {
+      const len = messageInput.value.length;
+      const max = messageInput.maxLength;
+      charCounter.textContent = len + " / " + max;
+      charCounter.className = "char-counter";
+      if (len > max * 0.85) charCounter.classList.add("warning");
+      if (len >= max) charCounter.classList.add("danger");
+    }
+
+    function updateVariantBadge() {
+      rotateCount.textContent = sendsOnThisVariant;
+      renderVariantPills();
+    }
+
+    function renderVariantPills() {
+      variantRow.innerHTML = '<i class="fas fa-layer-group text-[10px] text-[#9CA3AF]"></i>';
+      messageVariants.forEach((text, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const enabled = variantEnabled[i];
+        const isActive = i === currentVariantIndex;
+        // Style: enabled=blue, disabled=gray outline, active=special marker
+        let cls = "text-[11px] font-medium px-2 py-0.5 rounded-full border transition flex items-center gap-1 ";
+        if (isActive && enabled) {
+          cls += "bg-[#2266E2] text-white border-[#2266E2]";
+        } else if (enabled) {
+          cls += "bg-[#EFF6FF] text-[#2266E2] border-[#BFDBFE] hover:bg-[#2266E2] hover:text-white hover:border-[#2266E2]";
+        } else {
+          cls += "bg-white text-[#D1D5DB] border-[#E5E7EB] hover:border-[#9CA3AF]";
+        }
+        btn.className = cls;
+        // Show toggle icon
+        const icon = document.createElement("i");
+        icon.className = enabled ? "fas fa-check-circle text-[8px]" : "fas fa-circle text-[8px]";
+        btn.appendChild(icon);
+        const span = document.createElement("span");
+        span.textContent = i + 1;
+        btn.appendChild(span);
+        btn.title = (enabled ? "ON" : "OFF") + " — " + text;
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (!enabled) {
+            // OFF → turn ON and load it
+            variantEnabled[i] = true;
+            currentVariantIndex = i;
+            sendsOnThisVariant = 0;
+            loadVariant(i);
+          } else if (!isActive) {
+            // ON but not active → switch to it
+            currentVariantIndex = i;
+            sendsOnThisVariant = 0;
+            loadVariant(i);
+          } else {
+            // Active → toggle OFF (if at least one remains ON)
+            const onCount = variantEnabled.filter(Boolean).length;
+            if (onCount <= 1) {
+              showToast("error", currentLang === "ar" ? "يجب تفعيل نسخة واحدة على الأقل" : "At least one variant must stay ON");
+              return;
+            }
+            variantEnabled[i] = false;
+          }
+          saveFeaturesState();
+          renderVariantPills();
+        });
+        variantRow.appendChild(btn);
+      });
+    }
+
+    function updateAiBadge() {
+      const hasText = messageInput.value.trim().length > 0;
+      aiBadge.style.display = (smartRephraseEnabled && hasText) ? "" : "none";
+    }
+
+    function formatPhone(value) {
+      return value.replace(/[^0-9]/g, "");
+    }
+
+    function loadVariant(index) {
+      const variant = messageVariants[index % messageVariants.length];
+      messageInput.value = variant;
+      updatePreview();
+      updateCharCounter();
+      updateVariantBadge();
+    }
+
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = formatPhone(phoneInput.value);
+      phoneInput.classList.remove("error");
+    });
+
+    nameInput.addEventListener("input", () => {
+      nameInput.classList.remove("error");
+      updatePreview();
+      updateAiBadge();
+    });
+
+    messageInput.addEventListener("input", () => {
+      updatePreview();
+      updateCharCounter();
+      updateAiBadge();
+      // Auto-save edits to the current variant
+      messageVariants[currentVariantIndex] = messageInput.value;
+      saveFeaturesState();
+    });
+
+    // Toggle: Smart Rephrase
+    rephraseToggle.addEventListener("change", () => {
+      smartRephraseEnabled = rephraseToggle.checked;
+      rephraseWrap.classList.toggle("active", smartRephraseEnabled);
+      saveFeaturesState();
+      updateAiBadge();
+    });
+
+    // Toggle: Use Patient Name
+    nameToggle.addEventListener("change", () => {
+      useNameEnabled = nameToggle.checked;
+      nameWrap.classList.toggle("active", useNameEnabled);
+      document.getElementById("nameFieldWrap").classList.toggle("hidden", !useNameEnabled);
+      nameInput.required = useNameEnabled;
+      saveFeaturesState();
+      updatePreview();
+    });
+
+    // Toggle: Send Timing
+    timingToggle.addEventListener("change", () => {
+      timingEnabled = timingToggle.checked;
+      timingControls.classList.toggle("hidden", !timingEnabled);
+      if (!timingEnabled) typingIndicatorEl.classList.add("hidden");
+      saveFeaturesState();
+    });
+    minDelayInput.addEventListener("change", () => {
+      minDelaySec = Math.max(1, parseInt(minDelayInput.value) || 5);
+      if (minDelaySec > maxDelaySec) { maxDelaySec = minDelaySec; maxDelayInput.value = maxDelaySec; }
+      saveFeaturesState();
+    });
+    maxDelayInput.addEventListener("change", () => {
+      maxDelaySec = Math.max(1, parseInt(maxDelayInput.value) || 10);
+      if (maxDelaySec < minDelaySec) { minDelaySec = maxDelaySec; minDelayInput.value = minDelaySec; }
+      saveFeaturesState();
+    });
+    typingToggle.addEventListener("change", () => {
+      typingEnabled = typingToggle.checked;
+      typingWrap.classList.toggle("active", typingEnabled);
+      saveFeaturesState();
+    });
+
+    // Insert variable into message at cursor
+    document.querySelectorAll(".var-insert").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const varText = btn.dataset.var;
+        const start = messageInput.selectionStart;
+        const end = messageInput.selectionEnd;
+        const before = messageInput.value.substring(0, start);
+        const after = messageInput.value.substring(end);
+        messageInput.value = before + varText + after;
+        const pos = start + varText.length;
+        messageInput.setSelectionRange(pos, pos);
+        messageInput.focus();
+        updatePreview();
+        updateCharCounter();
+      });
+    });
+
+    // Image attach
+    attachImageInput.addEventListener("change", () => {
+      const file = attachImageInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachedImage = { dataUrl: e.target.result, name: file.name };
+        imagePreview.src = e.target.result;
+        imageFileName.textContent = file.name;
+        imagePreviewWrap.classList.remove("hidden");
+        updatePreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    removeImageBtn.addEventListener("click", () => {
+      attachedImage = null;
+      imagePreviewWrap.classList.add("hidden");
+      imagePreview.src = "";
+      imageFileName.textContent = "";
+      attachImageInput.value = "";
+      updatePreview();
+    });
+
+    // Message text direction toggle (Ar/En)
+    const msgDirBtns = document.querySelectorAll("#msgDirToggle button");
+    msgDirBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.dir;
+        messageInput.dir = dir;
+        messageInput.style.textAlign = dir === "rtl" ? "right" : "left";
+        msgDirBtns.forEach(b => {
+          b.classList.remove("bg-[#2266E2]", "text-white");
+          b.classList.add("text-[#6B7280]", "hover:bg-gray-100");
+        });
+        btn.classList.add("bg-[#2266E2]", "text-white");
+        btn.classList.remove("text-[#6B7280]", "hover:bg-gray-100");
+      });
+    });
+
+    // Shuffle: rephrase message in-place
+    shuffleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const msg = messageInput.value;
+      if (!msg) return;
+      const rephrased = rephraseMessage(msg, currentLang);
+      if (rephrased !== msg) {
+        messageInput.value = rephrased;
+        messageInput.classList.add("rephrase-flash");
+        setTimeout(() => messageInput.classList.remove("rephrase-flash"), 500);
+        updatePreview();
+        updateCharCounter();
+      }
+    });
+
+    // Toggle: Rotate Every 5
+    rotateToggle.addEventListener("change", () => {
+      rotationEnabled = rotateToggle.checked;
+      rotateWrap.classList.toggle("active", rotationEnabled);
+      sendsOnThisVariant = 0;
+      currentVariantIndex = 0;
+      if (rotationEnabled) loadVariant(0);
+      saveFeaturesState();
+      updateVariantBadge();
+    });
+
+    // Initial preview
+    updatePreview();
+    updateCharCounter();
+    updateVariantBadge();
+    updateAiBadge();
+
+    // If rotation was on, reload the correct variant
+    if (rotationEnabled) {
+      loadVariant(currentVariantIndex);
+    }
+
+    // Submit
+    document.getElementById("offerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Prevent double-send
+      if (sendBtn.disabled) return;
+
+      const phone = phoneInput.value.trim();
+      const name = nameInput.value.trim();
+      const cc = countryCode.value;
+      const t = i18n[currentLang];
+      let valid = true;
+
+      phoneInput.classList.remove("error");
+      nameInput.classList.remove("error");
+
+      if (!phone || phone.length < 6) {
+        phoneInput.classList.add("error");
+        valid = false;
+      }
+      if (useNameEnabled && !name) {
+        nameInput.classList.add("error");
+        valid = false;
+      }
+
+      if (!valid) {
+        showToast("error", t.toastValidation, t.toastValidationMsg, '<i class="fas fa-exclamation-triangle"></i>');
+        return;
+      }
+
+      // --- Apply Smart Rephrase before sending ---
+      let finalMessage = messageInput.value;
+      if (!useNameEnabled) finalMessage = finalMessage.replace(/\{\{name\}\}\s*/g, "");
+      finalMessage = finalMessage.replace(/\{\{number\}\}/g, cc + phone);
+      let wasRephrased = false;
+      if (smartRephraseEnabled) {
+        const rephrased = rephraseMessage(finalMessage, currentLang);
+        if (rephrased !== finalMessage) {
+          finalMessage = rephrased;
+          wasRephrased = true;
+          messageInput.value = finalMessage;
+          messageInput.classList.add("rephrase-flash");
+          setTimeout(() => messageInput.classList.remove("rephrase-flash"), 500);
+          updatePreview();
+          updateCharCounter();
+        }
+      }
+
+      // Loading state
+      sendBtn.disabled = true;
+      btnText.textContent = t.sending;
+      btnSpinner.classList.remove("hidden");
+
+      try {
+        if (timingEnabled && typingEnabled) {
+          const wordCount = finalMessage.split(/\s+/).filter(w => w.length > 0).length;
+          const typingDuration = Math.max(2000, wordCount * 2500 + Math.random() * 2000);
+          typingIndicatorEl.classList.remove("hidden");
+          await new Promise(r => setTimeout(r, typingDuration));
+          typingIndicatorEl.classList.add("hidden");
+          await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+        }
+
+        let delayMs = 1800 + Math.random() * 1200;
+        if (timingEnabled) {
+          delayMs = (minDelaySec + Math.random() * (maxDelaySec - minDelaySec)) * 1000;
+        }
+        await new Promise(r => setTimeout(r, delayMs));
+
+        // Send to real backend if connected, otherwise simulate
+        if (connStatus === "connected") {
+          const apiUrl = getActiveApi() + "/send-message";
+          const res = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: cc + phone, message: finalMessage }),
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+        } else {
+          // Simulate 5% failure when disconnected
+          await new Promise((resolve, reject) => {
+            setTimeout(() => {
+              if (Math.random() > 0.05) resolve();
+              else reject();
+            }, 1000 + Math.random() * 2000);
+          });
+        }
+
+        // Success
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString(currentLang === "ar" ? "ar-EG" : "en-US", { hour: "2-digit", minute: "2-digit" });
+        history.push({
+          name, phone, countryCode: cc, time: timeStr, timestamp: now.getTime(),
+          rephrased: wasRephrased,
+          variant: rotationEnabled ? currentVariantIndex : undefined,
+          hasImage: !!attachedImage,
+        });
+        if (history.length > 50) history = history.slice(-50);
+        localStorage.setItem("whatsapp_history", JSON.stringify(history));
+
+        stats.sent++;
+        stats.delivered++;
+        localStorage.setItem("whatsapp_stats", JSON.stringify(stats));
+
+        renderHistory();
+
+        if (rotationEnabled) {
+          sendsOnThisVariant++;
+          if (sendsOnThisVariant >= 5) {
+            sendsOnThisVariant = 0;
+            const enabledIndices = messageVariants.map((_, i) => i).filter(i => variantEnabled[i]);
+            if (enabledIndices.length > 0) {
+              const curPos = enabledIndices.indexOf(currentVariantIndex);
+              const nextPos = (curPos + 1) % enabledIndices.length;
+              currentVariantIndex = enabledIndices[nextPos];
+            } else {
+              currentVariantIndex = (currentVariantIndex + 1) % messageVariants.length;
+            }
+            loadVariant(currentVariantIndex);
+            showToast("success",
+              currentLang === "ar" ? "تم تدوير النص!" : "Message Rotated!",
+              currentLang === "ar"
+                ? "تم التبديل إلى النسخة " + (currentVariantIndex + 1) + " من الرسالة."
+                : "Switched to variant " + (currentVariantIndex + 1) + ".",
+              '<i class="fas fa-arrows-rotate"></i>'
+            );
+          }
+          updateVariantBadge();
+        }
+        saveFeaturesState();
+
+        showToast("success", t.toastSent, t.toastSentMsg, '<i class="fas fa-check"></i>');
+
+        phoneInput.value = "";
+        nameInput.value = "";
+        updatePreview();
+        updateCharCounter();
+        phoneInput.focus();
+
+      } catch {
+        typingIndicatorEl.classList.add("hidden");
+        stats.sent++;
+        stats.pending++;
+        localStorage.setItem("whatsapp_stats", JSON.stringify(stats));
+        renderHistory();
+        showToast("error", t.toastError, t.toastErrorMsg, '<i class="fas fa-times"></i>');
+      } finally {
+        sendBtn.disabled = false;
+        btnText.textContent = t.sendOffer;
+        btnSpinner.classList.add("hidden");
+      }
+    });
+
+    // Clear history
+    document.getElementById("clearHistory").addEventListener("click", () => {
+      history = [];
+      localStorage.removeItem("whatsapp_history");
+      renderHistory();
+      const t = i18n[currentLang];
+      showToast("success", t.toastCleared, t.toastClearedMsg, '<i class="fas fa-trash"></i>');
+    });
+
+    // Keyboard shortcut
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        document.getElementById("offerForm").requestSubmit();
+      }
+    });
+
+    // ==================== Bulk Import ====================
+    let importedContacts = [];
+
+    const uploadArea = document.getElementById("uploadArea");
+    const fileInput = document.getElementById("fileInput");
+    const importSection = document.getElementById("importSection");
+    const importCount = document.getElementById("importCount");
+    const contactsList = document.getElementById("contactsList");
+    const sendAllBtn = document.getElementById("sendAllBtn");
+    const clearImportBtn = document.getElementById("clearImport");
+    const downloadTemplateBtn = document.getElementById("downloadTemplate");
+    const dupBadge = document.getElementById("dupBadge");
+    const dupCount = document.getElementById("dupCount");
+    const removeDupBtn = document.getElementById("removeDupBtn");
+
+    // Download CSV template
+    downloadTemplateBtn.addEventListener("click", () => {
+      const t = i18n[currentLang];
+      const csv = "Patient Name,Phone Number\nAhmed Hassan,01001234567\nMona Ali,01098765432\nKhaled Omar,01005554433";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "patients_template.csv";
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showToast("success", t.templateDownloaded, t.templateDownloadedMsg);
+    });
+
+    uploadArea.addEventListener("click", () => fileInput.click());
+
+    uploadArea.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadArea.classList.add("upload-area-drag");
+    });
+    uploadArea.addEventListener("dragleave", () => {
+      uploadArea.classList.remove("upload-area-drag");
+    });
+    uploadArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove("upload-area-drag");
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        parseFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length) parseFile(fileInput.files[0]);
+    });
+
+    function findDuplicatePhones(contacts) {
+      const seen = {};
+      const dups = new Set();
+      contacts.forEach(c => {
+        if (seen[c.phone]) dups.add(c.phone);
+        seen[c.phone] = true;
+      });
+      return dups;
+    }
+
+    function parseFile(file) {
+      const t = i18n[currentLang];
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+          if (!json.length) throw new Error("empty");
+
+          const headers = Object.keys(json[0]).map(h => h.toLowerCase().trim());
+          let phoneKey = headers.find(h => /phone|number|tel|mobile|هاتف|رقم|موبايل/.test(h));
+          let nameKey = headers.find(h => /name|patient|اسم|مريض|عميل|patient.?name/.test(h));
+
+          if (!phoneKey) {
+            showToast("error", t.noPhoneColumn, t.noPhoneColumnMsg);
+            return;
+          }
+
+          const origPhoneKey = Object.keys(json[0]).find(k => k.toLowerCase().trim() === phoneKey);
+          const origNameKey = nameKey ? Object.keys(json[0]).find(k => k.toLowerCase().trim() === nameKey) : null;
+
+          importedContacts = json.map(row => ({
+            phone: String(row[origPhoneKey] || "").replace(/[^0-9]/g, ""),
+            name: origNameKey ? (String(row[origNameKey] || "").trim() || "Patient") : "Patient",
+          })).filter(c => c.phone.length >= 6);
+
+          renderImportedContacts();
+          const dups = findDuplicatePhones(importedContacts);
+          if (dups.size > 0) {
+            showToast("warning", t.dupFound, `${dups.size} ${t.dupFoundMsg}`);
+          }
+          showToast("success", t.importSuccess, `${importedContacts.length} ${t.importSuccessMsg}`);
+          fileInput.value = "";
+        } catch {
+          showToast("error", t.importError, t.importErrorMsg);
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderImportedContacts() {
+      const t = i18n[currentLang];
+      importSection.classList.remove("hidden");
+      importCount.textContent = `${importedContacts.length} ${t.contactsFound}`;
+      contactsList.innerHTML = "";
+
+      if (!importedContacts.length) {
+        importSection.classList.add("hidden");
+        return;
+      }
+
+      const dups = findDuplicatePhones(importedContacts);
+      const hasDups = dups.size > 0;
+      dupBadge.classList.toggle("hidden", !hasDups);
+      removeDupBtn.classList.toggle("hidden", !hasDups);
+      dupCount.textContent = dups.size;
+
+      importedContacts.forEach((c, i) => {
+        const isDup = dups.has(c.phone);
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between py-1.5 px-2 rounded hover:bg-gray-50 text-[13px]";
+        if (isDup) div.style.background = "#FEF2F2";
+        div.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${isDup ? 'bg-red-100 text-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534]'}">${i + 1}</span>
+            <span class="truncate text-[#1F2937] font-medium">${c.name}</span>
+            ${isDup ? '<i class="fas fa-copy text-[#DC2626] text-[10px]" title="Duplicate"></i>' : ''}
+          </div>
+          <span class="text-[#6B7280] text-[12px] flex-shrink-0 ml-2">${c.phone}</span>
+        `;
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => {
+          phoneInput.value = c.phone;
+          nameInput.value = c.name;
+          updatePreview();
+          updateCharCounter();
+          phoneInput.focus();
+        });
+        contactsList.appendChild(div);
+      });
+    }
+
+    // Remove duplicates (keep first occurrence)
+    removeDupBtn.addEventListener("click", () => {
+      const seen = {};
+      const before = importedContacts.length;
+      importedContacts = importedContacts.filter(c => {
+        if (seen[c.phone]) return false;
+        seen[c.phone] = true;
+        return true;
+      });
+      renderImportedContacts();
+      const t = i18n[currentLang];
+      showToast("success", t.dupRemoved, `${before - importedContacts.length} ${t.dupRemovedMsg}`);
+    });
+
+    sendAllBtn.addEventListener("click", async () => {
+      if (!importedContacts.length) return;
+      const t = i18n[currentLang];
+      let sent = 0;
+
+      for (const contact of importedContacts) {
+        phoneInput.value = contact.phone;
+        nameInput.value = contact.name;
+        updatePreview();
+        updateCharCounter();
+
+        const form = document.getElementById("offerForm");
+        const btn = document.getElementById("sendBtn");
+        if (btn.disabled) continue;
+
+        form.dispatchEvent(new Event("submit"));
+
+        await new Promise(r => {
+          const check = setInterval(() => {
+            if (!btn.disabled) {
+              clearInterval(check);
+              r();
+            }
+          }, 100);
+        });
+
+        sent++;
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      importedContacts = [];
+      renderImportedContacts();
+    });
+
+    clearImportBtn.addEventListener("click", () => {
+      importedContacts = [];
+      renderImportedContacts();
+    });
+
+    // ==================== WhatsApp Connection (QR) ====================
+    // --- Settings persistence ---
+    const connSettings = JSON.parse(localStorage.getItem("whatsapp_conn_settings") || '{"apiUrl":"","apiOn":true,"wsLink":"","wsOn":false}');
+
+    function saveConnSettings() {
+      localStorage.setItem("whatsapp_conn_settings", JSON.stringify(connSettings));
+    }
+
+    const CONN_API = connSettings.apiOn && connSettings.apiUrl ? connSettings.apiUrl : window.location.origin;
+    const WS_LINK = connSettings.wsOn && connSettings.wsLink ? connSettings.wsLink : null;
+
+    let connStatus = "disconnected";
+    let socket = null;
+
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalClose = document.getElementById("modalClose");
+    const connectBtn = document.getElementById("connectBtn");
+    const connectActionBtn = document.getElementById("connectActionBtn");
+    const connectActionText = document.getElementById("connectActionText");
+    const connectSpinner = document.getElementById("connectSpinner");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const qrImage = document.getElementById("qrImage");
+    const qrSkeleton = document.getElementById("qrSkeleton");
+    const qrConnected = document.getElementById("qrConnected");
+    const qrContainer = document.getElementById("qrContainer");
+    const qrStatusText = document.getElementById("qrStatusText");
+    const deviceInfo = document.getElementById("deviceInfo");
+    const step1 = document.getElementById("step1");
+    const step2 = document.getElementById("step2");
+    const step3 = document.getElementById("step3");
+    const step4 = document.getElementById("step4");
+    const statusDot = document.getElementById("statusDot");
+    const statusLabel = document.querySelector('[data-i18n="connected"]');
+    // Settings elements
+    const settingsToggle = document.getElementById("settingsToggle");
+    const settingsIcon = document.getElementById("settingsIcon");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const apiInput = document.getElementById("apiInput");
+    const apiToggle = document.getElementById("apiToggle");
+    const apiSaveBtn = document.getElementById("apiSaveBtn");
+    const wsInput = document.getElementById("wsInput");
+    const wsToggle = document.getElementById("wsToggle");
+    const wsSaveBtn = document.getElementById("wsSaveBtn");
+
+    // Load settings into UI
+    apiInput.value = connSettings.apiUrl;
+    apiToggle.checked = connSettings.apiOn;
+    wsInput.value = connSettings.wsLink;
+    wsToggle.checked = connSettings.wsOn;
+
+    // Settings toggle expand/collapse
+    settingsToggle.addEventListener("click", () => {
+      const isOpen = !settingsPanel.classList.toggle("hidden");
+      settingsIcon.style.transform = isOpen ? "rotate(90deg)" : "rotate(0deg)";
+    });
+
+    function saveApiSetting() {
+      connSettings.apiUrl = apiInput.value.trim();
+      connSettings.apiOn = apiToggle.checked;
+      saveConnSettings();
+      const t2 = i18n[currentLang];
+      showToast("success", t2.settingsSaved, t2.settingsSavedMsg);
+    }
+
+    function saveWsSetting() {
+      connSettings.wsLink = wsInput.value.trim();
+      connSettings.wsOn = wsToggle.checked;
+      saveConnSettings();
+      const t2 = i18n[currentLang];
+      showToast("success", t2.settingsSaved, t2.settingsSavedMsg);
+    }
+
+    apiSaveBtn.addEventListener("click", saveApiSetting);
+    wsSaveBtn.addEventListener("click", saveWsSetting);
+    apiToggle.addEventListener("change", saveApiSetting);
+    wsToggle.addEventListener("change", saveWsSetting);
+
+    function loc(key) { return i18n[currentLang]?.[key] || key; }
+
+    function getActiveApi() {
+      const g = JSON.parse(localStorage.getItem("whatsapp_gateway_settings") || '{}');
+      if (g.url) {
+        // If still default localhost but not on localhost, use current origin
+        if (g.url === "localhost" && window.location.hostname !== "localhost") {
+          return window.location.origin;
+        }
+        const port = g.port || "443";
+        const proto = g.url === "localhost" || g.url === "127.0.0.1" ? "http" : "https";
+        return proto + "://" + g.url + ":" + port;
+      }
+      const s = JSON.parse(localStorage.getItem("whatsapp_conn_settings") || '{}');
+      if (s.apiOn && s.apiUrl) return s.apiUrl;
+      return window.location.origin;
+    }
+
+    function getActiveWs() {
+      const s = JSON.parse(localStorage.getItem("whatsapp_conn_settings") || '{}');
+      if (s.wsOn && s.wsLink) return s.wsLink;
+      return null;
+    }
+
+    // Open modal
+    connectBtn.addEventListener("click", () => {
+      modalOverlay.classList.add("open");
+      if (!socket) initSocket();
+    });
+    modalClose.addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) closeModal(); });
+
+    function closeModal() {
+      modalOverlay.classList.remove("open");
+    }
+
+    function setSteps(active) {
+      [step1, step2, step3, step4].forEach((el, i) => {
+        el.className = "status-step";
+        if (i < active) el.classList.add("done");
+        else if (i === active) el.classList.add("active");
+      });
+    }
+
+    function showQRState(state, data) {
+      qrSkeleton.classList.add("hidden");
+      qrImage.classList.add("hidden");
+      qrConnected.classList.add("hidden");
+
+      if (state === "disconnected") {
+        qrSkeleton.classList.remove("hidden");
+        qrSkeleton.querySelector("i").className = "fas fa-qrcode text-3xl text-[#D1D5DB]";
+        qrStatusText.textContent = loc("qrInstructions");
+        setSteps(0);
+        connectActionText.textContent = loc("connectNow");
+        connectSpinner.classList.add("hidden");
+        connectActionBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      } else if (state === "generating") {
+        qrSkeleton.classList.remove("hidden");
+        qrSkeleton.querySelector("i").className = "fas fa-spinner fa-spin text-3xl text-[#2266E2]";
+        qrStatusText.textContent = loc("statusConnecting");
+        setSteps(1);
+        connectActionText.textContent = loc("statusConnecting");
+        connectSpinner.classList.remove("hidden");
+        connectActionBtn.disabled = true;
+        disconnectBtn.disabled = true;
+      } else if (state === "scan") {
+        qrImage.classList.remove("hidden");
+        qrImage.src = data?.qr || "";
+        qrStatusText.textContent = loc("qrInstructions");
+        setSteps(2);
+        connectActionText.textContent = loc("statusConnecting");
+        connectSpinner.classList.remove("hidden");
+        connectActionBtn.disabled = true;
+        disconnectBtn.disabled = false;
+      } else if (state === "connected") {
+        qrConnected.classList.remove("hidden");
+        qrStatusText.textContent = loc("deviceConnected");
+        setSteps(3);
+        connectActionText.textContent = loc("deviceConnected");
+        connectSpinner.classList.add("hidden");
+        connectActionBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        if (data?.pushName) deviceInfo.textContent = data.pushName;
+      }
+    }
+
+    function updateNavStatus(status) {
+      const t2 = i18n[currentLang];
+      statusDot.className = "status-dot " + (status === "connected" ? "connected" : "disconnected");
+      if (statusLabel) statusLabel.textContent = status === "connected" ? t2.statusConnected : t2.statusDisconnected;
+    }
+
+    function initSocket() {
+      showQRState("generating");
+      connStatus = "connecting";
+      updateNavStatus("connecting");
+
+      const url = getActiveApi();
+      const ws = getActiveWs();
+      const opts = ws ? { transports: ["websocket"], ws: [ws] } : { transports: ["websocket", "polling"] };
+
+      if (socket) { socket.disconnect(); socket = null; }
+
+      socket = io(url, opts);
+
+      socket.on("connect", () => showQRState("generating"));
+
+      socket.on("qr", (data) => {
+        if (data?.qr) showQRState("scan", data);
+      });
+
+      socket.on("status", (data) => {
+        if (data?.status === "connected") {
+          connStatus = "connected";
+          showQRState("connected", data);
+          updateNavStatus("connected");
+          setTimeout(closeModal, 1800);
+        } else if (data?.status === "disconnected") {
+          connStatus = "disconnected";
+          showQRState("disconnected");
+          updateNavStatus("disconnected");
+        }
+      });
+
+      socket.on("disconnect", () => {
+        if (connStatus !== "connected") {
+          showQRState("disconnected");
+          updateNavStatus("disconnected");
+        }
+      });
+    }
+
+    connectActionBtn.addEventListener("click", () => {
+      if (socket) { socket.disconnect(); socket = null; }
+      initSocket();
+    });
+
+    disconnectBtn.addEventListener("click", async () => {
+      const t2 = i18n[currentLang];
+      disconnectBtn.disabled = true;
+      disconnectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t2.disconnecting;
+      try {
+        await fetch(getActiveApi() + "/api/disconnect", { method: "POST" });
+      } catch { /* ignore */ }
+      connStatus = "disconnected";
+      showQRState("disconnected");
+      updateNavStatus("disconnected");
+      if (socket) { socket.disconnect(); socket = null; }
+      disconnectBtn.disabled = false;
+      disconnectBtn.innerHTML = '<i class="fas fa-power-off text-[#EF4444]"></i> ' + t2.disconnect;
+    });
+
+    // ==================== Gateway Settings Modal ====================
+    const settingsModal = document.getElementById("settingsModal");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsModalClose = document.getElementById("settingsModalClose");
+    const modeLink = document.getElementById("modeLink");
+    const modeApi = document.getElementById("modeApi");
+    const gwUrlInput = document.getElementById("gwUrlInput");
+    const gwPortInput = document.getElementById("gwPortInput");
+    const gwPreview = document.getElementById("gwPreview");
+    const gwActiveUrl = document.getElementById("gwActiveUrl");
+    const gwSaveBtn = document.getElementById("gwSaveBtn");
+    const gwResetBtn = document.getElementById("gwResetBtn");
+    const gwResetServerBtn = document.getElementById("gwResetServerBtn");
+    const testPhone = document.getElementById("testPhone");
+    const testMsg = document.getElementById("testMsg");
+    const testSendBtn = document.getElementById("testSendBtn");
+    const testSpinner = document.getElementById("testSpinner");
+    const gwStatusHeader = document.getElementById("gwStatusHeader");
+
+    // Default gateway settings
+    const defaultGw = { mode: "link", url: "localhost", port: "3000" };
+
+    function loadGwSettings() {
+      let gw;
+      try { gw = JSON.parse(localStorage.getItem("whatsapp_gateway_settings")); } catch { }
+      if (!gw || !gw.url) gw = { ...defaultGw };
+      // If still default localhost, use current origin when served from same server
+      if (gw.url === "localhost" && window.location.port !== "3000" && window.location.hostname !== "localhost") {
+        const urlObj = new URL(window.location.origin);
+        gw.url = urlObj.hostname;
+        gw.port = urlObj.port || "443";
+      }
+      return gw;
+    }
+
+    function saveGwSettings(gw) {
+      localStorage.setItem("whatsapp_gateway_settings", JSON.stringify(gw));
+    }
+
+    function applyGwToUI() {
+      const gw = loadGwSettings();
+      gwUrlInput.value = gw.url || "";
+      gwPortInput.value = gw.port || "443";
+      const isLink = gw.mode !== "api";
+      modeLink.classList.toggle("active", isLink);
+      modeLink.classList.toggle("mode-tab", true);
+      modeApi.classList.toggle("active", !isLink);
+      modeApi.classList.toggle("mode-tab", true);
+      updateGwPreview();
+      // Update status header based on actual connection
+      const isConnected = connStatus === "connected";
+      gwStatusHeader.className = "mb-5 p-4 rounded-lg flex items-center gap-3 border " +
+        (isConnected ? "bg-green-50 border-green-200" : "bg-gray-50 border-[#E5E7EB]");
+      gwStatusHeader.querySelector("i").className = isConnected ? "fas fa-check-circle text-lg text-[#10B981]" : "fas fa-times-circle text-lg text-[#9CA3AF]";
+      gwStatusHeader.querySelector("p").textContent = isConnected ? loc("gwConnected") : (loc("statusDisconnected") + " — " + loc("qrInstructions"));
+    }
+
+    function updateGwPreview() {
+      const url = gwUrlInput.value.trim() || "url";
+      const port = gwPortInput.value.trim() || "port";
+      const proto = url === "localhost" || url === "127.0.0.1" ? "http" : "https";
+      const full = proto + "://" + url + ":" + port + "/send-message";
+      gwPreview.textContent = full;
+      gwActiveUrl.textContent = full.replace("/send-message", "");
+    }
+
+    // Open / close
+    settingsBtn.addEventListener("click", () => { applyGwToUI(); settingsModal.classList.add("open"); });
+    settingsModalClose.addEventListener("click", () => settingsModal.classList.remove("open"));
+    settingsModal.addEventListener("click", (e) => { if (e.target === settingsModal) settingsModal.classList.remove("open"); });
+
+    // Mode tabs
+    [modeLink, modeApi].forEach(btn => {
+      btn.classList.add("mode-tab");
+      btn.addEventListener("click", () => {
+        modeLink.classList.toggle("active", btn.dataset.mode === "link");
+        modeApi.classList.toggle("active", btn.dataset.mode === "api");
+      });
+    });
+
+    // Live preview
+    gwUrlInput.addEventListener("input", updateGwPreview);
+    gwPortInput.addEventListener("input", updateGwPreview);
+
+    // Save & Reconnect
+    gwSaveBtn.addEventListener("click", () => {
+      const gw = {
+        mode: modeLink.classList.contains("active") ? "link" : "api",
+        url: gwUrlInput.value.trim(),
+        port: gwPortInput.value.trim() || "443",
+      };
+      saveGwSettings(gw);
+      const t2 = i18n[currentLang];
+      showToast("success", t2.gwSaved, t2.gwSavedMsg);
+      settingsModal.classList.remove("open");
+      // Reconnect socket with new URL
+      if (socket) { socket.disconnect(); socket = null; }
+      if (document.getElementById("modalOverlay").classList.contains("open")) {
+        initSocket();
+      }
+    });
+
+    // Reset to Default
+    gwResetBtn.addEventListener("click", () => {
+      saveGwSettings({ ...defaultGw });
+      applyGwToUI();
+      const t2 = i18n[currentLang];
+      showToast("success", t2.gwReset, t2.gwResetMsg);
+    });
+
+    // Reset Server
+    gwResetServerBtn.addEventListener("click", async () => {
+      const t2 = i18n[currentLang];
+      try {
+        await fetch(getActiveApi() + "/api/reset", { method: "POST" });
+      } catch { /* ignore */ }
+      showToast("success", t2.gwResetServer, t2.gwResetServerMsg);
+    });
+
+    // Send Test Message
+    testSendBtn.addEventListener("click", async () => {
+      const t2 = i18n[currentLang];
+      const phone = testPhone.value.trim();
+      const msg = testMsg.value.trim();
+      if (!phone) { showToast("error", t2.testFailed, "Enter a phone number"); return; }
+      testSendBtn.disabled = true;
+      testSpinner.classList.remove("hidden");
+      testSendBtn.querySelector("span").textContent = t2.testSending;
+      try {
+        const apiBase = getActiveApi();
+        const url = apiBase + "/send-message";
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, message: msg, test: true }),
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        showToast("success", t2.testSent, t2.testSentMsg);
+      } catch {
+        showToast("error", t2.testFailed, t2.testFailedMsg);
+      }
+      testSendBtn.disabled = false;
+      testSpinner.classList.add("hidden");
+      testSendBtn.querySelector("span").textContent = t2.sendTest;
+    });
+
+    // ==================== Saudi Clock ====================
+    const clockEl = document.getElementById("clockTime");
+
+    function updateClock() {
+      const now = new Date();
+      const saudi = now.toLocaleTimeString(currentLang === "ar" ? "ar-SA" : "en-US", {
+        timeZone: "Asia/Riyadh",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      clockEl.textContent = saudi;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Init
+    renderHistory();
+    setLanguage("en");
+  </script>
+</body>
+</html>
